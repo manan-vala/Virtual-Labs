@@ -7,42 +7,41 @@ export const initPhysics = (containerRef) => {
   const engine = Engine.create();
   const world = engine.world;
 
-  // 2. Create the renderer (injects canvas into the React ref)
+  // 2. Create the renderer
   const render = Render.create({
     element: containerRef.current,
     engine: engine,
     options: {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
-      wireframes: false, // Set to false to render solid colors
-      background: '#f8fafc', // Matches Tailwind slate-50
+      wireframes: false,
+      background: '#f8fafc',
     }
   });
 
-  // 3. Add boundaries (ground and walls) so objects don't fall into the void
-  // 3. Add boundaries (Massive, interlocking bumpers)
+  // 3. Add massive, interlocking boundaries to prevent objects escaping
   const width = render.options.width;
   const height = render.options.height;
-  const thickness = 1000; // 1000px thick walls!
+  const thickness = 1000; 
   
   const wallConfig = { 
     isStatic: true, 
     render: { fillStyle: '#475569' } 
   };
 
-  // Center the walls on the edges, but make them extend infinitely outward and overlap each other
   const ground = Bodies.rectangle(width / 2, height + (thickness / 2), width * 3, thickness, wallConfig);
   const ceiling = Bodies.rectangle(width / 2, -(thickness / 2), width * 3, thickness, wallConfig);
   const leftWall = Bodies.rectangle(-(thickness / 2), height / 2, thickness, height * 3, wallConfig);
   const rightWall = Bodies.rectangle(width + (thickness / 2), height / 2, thickness, height * 3, wallConfig);
 
-  // 4. Add a test box with some bounciness (restitution)
+  // 4. Add a test box
   const testBox = Bodies.rectangle(width / 2, 100, 80, 80, { 
-    restitution: 0.7, // Adds a nice bounce so it doesn't just stick to the walls
+    restitution: 0.7, 
     render: { fillStyle: '#3b82f6' } 
   });
 
   World.add(world, [ground, leftWall, rightWall, ceiling, testBox]);
+
   // 5. Add Mouse Interaction
   const mouse = Mouse.create(render.canvas);
   const mouseConstraint = MouseConstraint.create(engine, {
@@ -53,8 +52,6 @@ export const initPhysics = (containerRef) => {
     }
   });
   World.add(world, mouseConstraint);
-
-  // Keep the mouse in sync with the rendering scale
   render.mouse = mouse;
 
   // 6. Run the engine and renderer
@@ -62,7 +59,6 @@ export const initPhysics = (containerRef) => {
   const runner = Runner.create();
   Runner.run(runner, engine);
 
-  // Return a cleanup function for React's useEffect
   return {
     engine,
     world,
