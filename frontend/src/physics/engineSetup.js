@@ -1,75 +1,67 @@
 import Matter from 'matter-js';
 
 export const initPhysics = (containerRef) => {
-  const { Engine, Render, Runner, World, Bodies, Mouse, MouseConstraint } = Matter;
+  // Nuke phantom canvases from React Strict Mode
+  if (containerRef.current) containerRef.current.innerHTML = '';
 
-  // 1. Create the engine and world
+  const { Engine, Render, Runner, World, Bodies, Mouse, MouseConstraint } = Matter;
   const engine = Engine.create();
   const world = engine.world;
 
-  // 2. Create the renderer
   const render = Render.create({
     element: containerRef.current,
     engine: engine,
     options: {
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
+      width: 1200,
+      height: 800,
       wireframes: false,
       background: '#f8fafc',
+      pixelRatio: 1 // FIX: Forces 1:1 mouse tracking mapping
     }
   });
 
-  // 3. Add massive, interlocking boundaries to prevent objects escaping
-  const width = render.options.width;
-  const height = render.options.height;
+  render.canvas.style.width = '100%';
+  render.canvas.style.height = '100%';
+
+  const width = 1200;
+  const height = 800;
   const thickness = 1000; 
   
-  const wallConfig = { 
-    isStatic: true, 
-    render: { fillStyle: '#475569' } 
-  };
-
-  const ground = Bodies.rectangle(width / 2, height + (thickness / 2), width * 3, thickness, wallConfig);
+  const wallConfig = { isStatic: true, render: { fillStyle: '#475569' } };
+  
+  const visibleFloorHeight = 40;
+  const ground = Bodies.rectangle(width / 2, height + (thickness / 2) - visibleFloorHeight, width * 3, thickness, wallConfig); 
   const ceiling = Bodies.rectangle(width / 2, -(thickness / 2), width * 3, thickness, wallConfig);
   const leftWall = Bodies.rectangle(-(thickness / 2), height / 2, thickness, height * 3, wallConfig);
   const rightWall = Bodies.rectangle(width + (thickness / 2), height / 2, thickness, height * 3, wallConfig);
 
-  // 4. Add a test box
-  const testBox = Bodies.rectangle(width / 2, 100, 80, 80, { 
-    restitution: 0.7, 
-    render: { fillStyle: '#3b82f6' } 
-  });
+  World.add(world, [ground, leftWall, rightWall, ceiling]);
 
-  World.add(world, [ground, leftWall, rightWall, ceiling, testBox]);
-
-  // 5. Add Mouse Interaction
+  // FIX: Rely on native Matter.js mouse logic
   const mouse = Mouse.create(render.canvas);
   const mouseConstraint = MouseConstraint.create(engine, {
     mouse: mouse,
-    constraint: {
-      stiffness: 0.2,
-      render: { visible: false }
-    }
+    constraint: { stiffness: 0.2, render: { visible: false } }
   });
   World.add(world, mouseConstraint);
   render.mouse = mouse;
 
-  // 6. Run the engine and renderer
-  Render.run(render);
-  const runner = Runner.create();
-  Runner.run(runner, engine);
+  Matter.Render.run(render);
+  const runner = Matter.Runner.create();
 
   return {
     engine,
     world,
+    runner,
+    mouseConstraint,
     cleanup: () => {
-      Render.stop(render);
-      Runner.stop(runner);
-      Engine.clear(engine);
-      render.canvas.remove();
-      render.canvas = null;
-      render.context = null;
-      render.textures = {};
+      Matter.Render.stop(render);
+      Matter.Runner.stop(runner);
+      Matter.Engine.clear(engine);
+      if (render.canvas) {
+        render.canvas.remove();
+        render.canvas = null;
+      }
     }
   };
 };

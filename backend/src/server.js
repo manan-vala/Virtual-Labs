@@ -49,6 +49,22 @@ io.on('connection', (socket) => {
       io.to(socket.roomId).emit('shape-spawned', shapeData);
     }
   });
+  // Relay new constraints (springs/joints) to everyone in the room
+  socket.on('spawn-constraint', (constraintData) => {
+    if (socket.roomId) {
+      io.to(socket.roomId).emit('constraint-spawned', constraintData);
+    }
+  });
+  // Host commands a global workspace reset
+  socket.on('clear-canvas', () => {
+    if (socket.roomId && activeRooms[socket.roomId]) {
+      // Security check: Only the Host is allowed to clear the canvas
+      if (activeRooms[socket.roomId].host === socket.id) {
+        io.to(socket.roomId).emit('canvas-cleared');
+        console.log(`🧹 Room ${socket.roomId} cleared by Host.`);
+      }
+    }
+  });
 
   // --- NEW GUEST DRAG MECHANICS ---
   socket.on('guest-grab', (data) => {
@@ -77,8 +93,12 @@ io.on('connection', (socket) => {
     }
   });
 
+ // Host replies with the full snapshot, relay it to the specific Guest
   socket.on('initial-state-response', (data) => {
-    io.to(data.targetId).emit('sync-initial-state', data.bodies);
+    io.to(data.targetId).emit('sync-initial-state', {
+      bodies: data.bodies,
+      constraints: data.constraints // <-- Added this!
+    });
   });
 
   socket.on('disconnect', () => {
