@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'http://localhost:4000';
 
 // Create a single socket instance to be shared across the app
 export const socket = io(BACKEND_URL, {
