@@ -23,6 +23,9 @@ const PhysicsCanvas = () => {
   const [roomId, setRoomId] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
   const [role, setRole] = useState(null);
+  
+  // NEW: Environment State
+  const [isZeroG, setIsZeroG] = useState(false);
 
   useEffect(() => {
     activeToolRef.current = activeTool;
@@ -56,14 +59,10 @@ const PhysicsCanvas = () => {
           const allConstraints = Matter.Composite.allConstraints(engineRef.current.world);
           
           if (engineRef.current.timing.timestamp % 10 < 2) {
-            if (hudBodiesRef.current) {
-              hudBodiesRef.current.innerText = allBodies.filter(b => !b.isStatic).length;
-            }
+            if (hudBodiesRef.current) hudBodiesRef.current.innerText = allBodies.filter(b => !b.isStatic).length;
             if (hudConstraintsRef.current) {
-              // THE BUG FIX: Bulletproof constraint counting. Total constraints minus the Mouse.
-              const activeConstraints = allConstraints.filter(c => {
-                return !(mouseConstraintRef.current && c === mouseConstraintRef.current.constraint);
-              });
+              // THE BUG FIX: Correct joint count by subtracting the native mouse puller.
+              const activeConstraints = allConstraints.filter(c => !(mouseConstraintRef.current && c === mouseConstraintRef.current.constraint));
               hudConstraintsRef.current.innerText = activeConstraints.length;
             }
           }
@@ -133,19 +132,11 @@ const PhysicsCanvas = () => {
               } else {
                 if (selectedBodyForConstraintRef.current !== body.id) {
                   const bodyA = Matter.Composite.allBodies(engineRef.current.world).find(b => b.id === selectedBodyForConstraintRef.current);
-                  
                   const currentDist = Math.hypot(bodyA.position.x - body.position.x, bodyA.position.y - body.position.y);
                   const constraintLength = activeToolRef.current === 'spring' ? 0 : currentDist;
-                  
                   const newConstraintId = Math.floor(Math.random() * 10000000);
 
-                  socket.emit('spawn-constraint', {
-                    id: newConstraintId,
-                    type: activeToolRef.current,
-                    bodyAId: bodyA.id,
-                    bodyBId: body.id,
-                    length: constraintLength
-                  });
+                  socket.emit('spawn-constraint', { id: newConstraintId, type: activeToolRef.current, bodyAId: bodyA.id, bodyBId: body.id, length: constraintLength });
                 }
                 selectedBodyForConstraintRef.current = null;
               }
@@ -191,9 +182,7 @@ const PhysicsCanvas = () => {
         .map(b => ({ id: b.id, type: b.plugin.customType, x: b.position.x, y: b.position.y, angle: b.angle, velocity: b.velocity }));
       
       const snapshotConstraints = Matter.Composite.allConstraints(engineRef.current.world)
-        .filter(c => {
-           return !(mouseConstraintRef.current && c === mouseConstraintRef.current.constraint);
-        })
+        .filter(c => !(mouseConstraintRef.current && c === mouseConstraintRef.current.constraint))
         .map(c => ({ id: c.id, type: c.plugin?.customType || 'joint', bodyAId: c.bodyA.id, bodyBId: c.bodyB.id, length: c.length }));
         
       socket.emit('initial-state-response', { targetId, bodies: snapshotBodies, constraints: snapshotConstraints });
@@ -223,11 +212,9 @@ const PhysicsCanvas = () => {
         if (bodyA && bodyB) {
           const options = { bodyA, bodyB, length: cData.length, id: cData.id, plugin: { customType: cData.type }};
           if (cData.type === 'spring') {
-            options.stiffness = 0.02;
-            options.render = { type: 'line', strokeStyle: '#FF2D55', lineWidth: 4 };
+            options.stiffness = 0.02; options.render = { type: 'line', strokeStyle: '#FF2D55', lineWidth: 4 };
           } else {
-            options.stiffness = 1;
-            options.render = { type: 'line', strokeStyle: '#5856D6', lineWidth: 6 };
+            options.stiffness = 1; options.render = { type: 'line', strokeStyle: '#5856D6', lineWidth: 6 };
           }
           Matter.World.add(engineRef.current.world, Matter.Constraint.create(options));
         }
@@ -248,14 +235,12 @@ const PhysicsCanvas = () => {
           Matter.Body.setVelocity(localBody, serverBody.velocity);
         }
       });
-      
       if (hudBodiesRef.current) hudBodiesRef.current.innerText = serverBodies.length;
     });
 
     socket.on('shape-spawned', (shapeData) => {
       if (!engineRef.current) return;
       let newBody;
-      
       if (shapeData.type === 'box') newBody = Matter.Bodies.rectangle(shapeData.startX, shapeData.startY, 60, 60, { restitution: 0.6, render: { fillStyle: '#3b82f6' } });
       else if (shapeData.type === 'circle') newBody = Matter.Bodies.circle(shapeData.startX, shapeData.startY, 30, { restitution: 0.9, render: { fillStyle: '#10b981' } });
       else if (shapeData.type === 'heavyBox') newBody = Matter.Bodies.rectangle(shapeData.startX, shapeData.startY, 80, 80, { density: 0.1, restitution: 0.1, render: { fillStyle: '#334155' } });
@@ -275,11 +260,9 @@ const PhysicsCanvas = () => {
       if (bodyA && bodyB) {
         const options = { bodyA, bodyB, length: data.length, id: data.id, plugin: { customType: data.type }};
         if (data.type === 'spring') {
-          options.stiffness = 0.02;
-          options.render = { type: 'line', strokeStyle: '#FF2D55', lineWidth: 4 };
+          options.stiffness = 0.02; options.render = { type: 'line', strokeStyle: '#FF2D55', lineWidth: 4 };
         } else {
-          options.stiffness = 1; 
-          options.render = { type: 'line', strokeStyle: '#5856D6', lineWidth: 6 };
+          options.stiffness = 1; options.render = { type: 'line', strokeStyle: '#5856D6', lineWidth: 6 };
         }
         Matter.World.add(engineRef.current.world, Matter.Constraint.create(options));
       }
@@ -287,23 +270,25 @@ const PhysicsCanvas = () => {
 
     socket.on('canvas-cleared', () => {
       if (!engineRef.current) return;
-      
       const allBodies = Matter.Composite.allBodies(engineRef.current.world);
-      const dynamicBodies = allBodies.filter(b => !b.isStatic);
-      Matter.World.remove(engineRef.current.world, dynamicBodies);
+      Matter.World.remove(engineRef.current.world, allBodies.filter(b => !b.isStatic));
       
       const allConstraints = Matter.Composite.allConstraints(engineRef.current.world);
-      const constraintsToRemove = allConstraints.filter(c => {
-        const isMouseConstraint = mouseConstraintRef.current && c === mouseConstraintRef.current.constraint;
-        return !isMouseConstraint; 
-      });
-      Matter.World.remove(engineRef.current.world, constraintsToRemove);
+      Matter.World.remove(engineRef.current.world, allConstraints.filter(c => !(mouseConstraintRef.current && c === mouseConstraintRef.current.constraint)));
       
       guestDraggingIdRef.current = null;
       selectedBodyForConstraintRef.current = null;
 
       if (hudBodiesRef.current) hudBodiesRef.current.innerText = "0";
       if (hudConstraintsRef.current) hudConstraintsRef.current.innerText = "0";
+    });
+
+    // NEW: ENVIRONMENT LISTENER
+    socket.on('environment-updated', (envData) => {
+      if (!engineRef.current) return;
+      setIsZeroG(envData.isZeroG);
+      // If Zero-G, set gravity to 0. If Earth, set it back to 1.
+      engineRef.current.world.gravity.y = envData.isZeroG ? 0 : 1;
     });
 
     return () => {
@@ -324,6 +309,7 @@ const PhysicsCanvas = () => {
       socket.off('provide-initial-state');
       socket.off('sync-initial-state');
       socket.off('canvas-cleared');
+      socket.off('environment-updated');
     };
   }, []);
 
@@ -345,60 +331,73 @@ const PhysicsCanvas = () => {
     if (role === 'host') socket.emit('clear-canvas');
   };
 
+  // NEW: EMIT GRAVITY CHANGE
+  const handleToggleGravity = () => {
+    if (role === 'host') {
+      const newZeroGState = !isZeroG;
+      setIsZeroG(newZeroGState);
+      engineRef.current.world.gravity.y = newZeroGState ? 0 : 1;
+      socket.emit('update-environment', { isZeroG: newZeroGState });
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '2rem', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: 'sans-serif' }}>
+    <div className="flex flex-col items-center pt-8 min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-blue-200">
       
+      {/* --- JOIN MODAL (TAILWIND STYLED) --- */}
       {!hasJoined && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 50 }}>
-          <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '1.25rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', width: '100%', maxWidth: '24rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#0f172a', marginTop: 0 }}>Join a Lab</h2>
-            <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.875rem' }}>Enter a Room ID to collaborate in real-time.</p>
-            <form onSubmit={handleJoinRoom} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <input type="text" placeholder="e.g., fluid-dynamics-101" style={{ padding: '0.75rem 1rem', border: '1px solid #cbd5e1', borderRadius: '0.75rem', outline: 'none', fontSize: '1rem' }} value={roomId} onChange={(e) => setRoomId(e.target.value)} autoFocus />
-              <button type="submit" style={{ padding: '0.75rem 1rem', backgroundColor: '#007AFF', color: 'white', fontWeight: 'bold', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>Enter Workspace</button>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm transform transition-all">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">Join a Lab</h2>
+            <p className="text-slate-500 mb-6 text-sm">Enter a Room ID to collaborate in real-time.</p>
+            <form onSubmit={handleJoinRoom} className="flex flex-col gap-4">
+              <input type="text" placeholder="e.g., fluid-dynamics-101" className="px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-base" value={roomId} onChange={(e) => setRoomId(e.target.value)} autoFocus />
+              <button type="submit" className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 text-base">Enter Workspace</button>
             </form>
           </div>
         </div>
       )}
 
-      <div style={{ width: '100%', maxWidth: '900px', marginBottom: '1rem', padding: '0 1rem' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>VIRTUAL-LAB Workspace</h1>
-        <p style={{ color: '#64748b', marginTop: '0.25rem' }}>Construct dynamic physics mechanisms in real-time.</p>
-        {hasJoined && <p style={{ color: '#007AFF', fontWeight: 'bold', marginTop: '0.5rem', fontSize: '0.875rem', letterSpacing: '0.05em' }}>ROOM: {roomId} &bull; ROLE: {role ? role.toUpperCase() : 'CONNECTING...'}</p>}
+      {/* --- HEADER --- */}
+      <div className="w-full max-w-[900px] mb-4 px-4">
+        <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">VIRTUAL-LAB Workspace</h1>
+        <p className="text-slate-500 mt-1">Construct dynamic physics mechanisms in real-time.</p>
+        {hasJoined && <p className="text-blue-600 font-bold mt-2 text-sm tracking-wide uppercase">ROOM: {roomId} &bull; ROLE: {role ? role : 'CONNECTING...'}</p>}
       </div>
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: '900px', aspectRatio: '3 / 2', border: '1px solid #e2e8f0', borderRadius: '1.5rem', overflow: 'hidden', backgroundColor: '#ffffff', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+      {/* --- CANVAS CONTAINER --- */}
+      <div className="relative w-full max-w-[900px] aspect-[3/2] border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm">
         
-        {/* Top Centered Controls */}
-        <div style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-          <Toolbar activeTool={activeTool} onSetTool={setActiveTool} onAddShape={handleAddShape} onClear={handleClearCanvas} isHost={role === 'host'} />
+        {/* Floating Toolbar */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-max">
+          <Toolbar 
+            activeTool={activeTool} 
+            onSetTool={setActiveTool} 
+            onAddShape={handleAddShape} 
+            onClear={handleClearCanvas} 
+            onToggleGravity={handleToggleGravity}
+            isZeroG={isZeroG}
+            isHost={role === 'host'} 
+          />
         </div>
 
-        {/* --- THE LIVE TELEMETRY HUD (COMPACT & CLICK-THROUGH) --- */}
+        {/* --- THE FIX: MOVED LIVE TELEMETRY HUD TO BOTTOM-LEFT --- */}
         {hasJoined && (
-          <div style={{
-            position: 'absolute', bottom: '1rem', left: '1rem', zIndex: 10,
-            backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(0, 0, 0, 0.05)', borderRadius: '0.75rem', 
-            padding: '0.5rem 0.75rem', /* Smaller padding */
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
-            display: 'flex', flexDirection: 'column', gap: '0.5rem', /* Tighter gap */
-            minWidth: '90px', /* Slimmer width */
-            pointerEvents: 'none' /* THE MAGIC FIX: Clicks pass right through it! */
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bodies</span>
-              <span ref={hudBodiesRef} style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>0</span>
+          <div className="absolute bottom-4 left-4 z-20 bg-white/85 backdrop-blur-md border border-slate-200/50 rounded-xl px-4 py-3 shadow-lg shadow-slate-200/50 flex flex-col gap-2 min-w-[100px] pointer-events-none">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bodies</span>
+              <span ref={hudBodiesRef} className="text-base font-black text-slate-800 font-mono">0</span>
             </div>
-            <div style={{ width: '100%', height: '1px', backgroundColor: '#e2e8f0' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Joints</span>
-              <span ref={hudConstraintsRef} style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>0</span>
+            <div className="w-full h-px bg-slate-100"></div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Joints</span>
+              <span ref={hudConstraintsRef} className="text-base font-black text-slate-800 font-mono">0</span>
             </div>
           </div>
         )}
 
-        <div ref={sceneRef} style={{ width: '100%', height: '100%' }} />
+        {/* Matter.js Render Target */}
+        <div ref={sceneRef} className="w-full h-full" />
       </div>
     </div>
   );

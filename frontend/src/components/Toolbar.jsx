@@ -1,47 +1,50 @@
-const Toolbar = ({ activeTool, onSetTool, onAddShape, onClear, isHost }) => {
+const Toolbar = ({ activeTool, onSetTool, onAddShape, onClear, onToggleGravity, isZeroG, isHost }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '1rem' }}>
+    <div className="flex flex-col items-center mt-4">
       
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1.5rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(0, 0, 0, 0.05)', 
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-        borderRadius: '1.25rem'
-      }}>
+      {/* Floating Control Panel (Frosted Glass Aesthetic) */}
+      <div className="flex items-center gap-4 px-6 py-3 bg-white/85 backdrop-blur-xl border border-slate-200/50 shadow-xl shadow-slate-200/50 rounded-2xl">
         
         {/* --- TOOLS SECTION --- */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold', color: '#94a3b8', marginRight: '0.25rem' }}>Mode</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Mode</span>
           
-          <button onClick={() => onSetTool('pointer')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: activeTool === 'pointer' ? '#007AFF' : 'transparent', color: activeTool === 'pointer' ? 'white' : '#475569' }}>👆 Drag</button>
-          <button onClick={() => onSetTool('joint')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: activeTool === 'joint' ? '#5856D6' : 'transparent', color: activeTool === 'joint' ? 'white' : '#475569' }}>🔗 Rigid Joint</button>
-          <button onClick={() => onSetTool('spring')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: activeTool === 'spring' ? '#FF2D55' : 'transparent', color: activeTool === 'spring' ? 'white' : '#475569' }}>〰️ Spring</button>
+          <button onClick={() => onSetTool('pointer')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'pointer' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>👆 Drag</button>
+          <button onClick={() => onSetTool('joint')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'joint' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>🔗 Joint</button>
+          <button onClick={() => onSetTool('spring')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'spring' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>〰️ Spring</button>
         </div>
 
-        <div style={{ width: '1px', height: '24px', backgroundColor: '#e2e8f0', margin: '0 0.25rem' }}></div>
+        {/* Divider */}
+        <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
         {/* --- SPAWN SECTION --- */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold', color: '#94a3b8', marginRight: '0.25rem' }}>Spawn</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Spawn</span>
           
-          <button onClick={() => onAddShape('box')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', backgroundColor: '#f1f5f9', color: '#0f172a', borderRadius: '0.75rem', border: '1px solid #e2e8f0', cursor: 'pointer' }}>Box</button>
-          <button onClick={() => onAddShape('circle')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', backgroundColor: '#f1f5f9', color: '#0f172a', borderRadius: '0.75rem', border: '1px solid #e2e8f0', cursor: 'pointer' }}>Circle</button>
-          <button onClick={() => onAddShape('heavyBox')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', backgroundColor: '#334155', color: 'white', borderRadius: '0.75rem', border: 'none', cursor: 'pointer' }}>Anvil</button>
+          <button onClick={() => onAddShape('box')} className="px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-800 rounded-xl hover:bg-slate-200 transition-colors">Box</button>
+          <button onClick={() => onAddShape('circle')} className="px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-800 rounded-xl hover:bg-slate-200 transition-colors">Circle</button>
+          <button onClick={() => onAddShape('heavyBox')} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-colors shadow-md shadow-slate-700/20">Anvil</button>
         </div>
 
-        {/* --- HOST CONTROLS --- */}
+        {/* --- HOST CONTROLS (LAB SETTINGS) --- */}
         {isHost && (
           <>
-            <div style={{ width: '1px', height: '24px', backgroundColor: '#e2e8f0', margin: '0 0.25rem' }}></div>
-            <button 
-              onClick={onClear} 
-              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 'bold', backgroundColor: '#fef2f2', color: '#ef4444', borderRadius: '0.75rem', border: '1px solid #fecaca', cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
-            >
-              🗑️ Clear Lab
-            </button>
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Lab</span>
+              
+              {/* NEW: Gravity Toggle */}
+              <button 
+                onClick={onToggleGravity} 
+                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${isZeroG ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              >
+                {isZeroG ? '🌌 Zero-G' : '🌍 Earth Gravity'}
+              </button>
+              
+              <button onClick={onClear} className="px-4 py-2 text-sm font-semibold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
+                🗑️ Clear
+              </button>
+            </div>
           </>
         )}
 

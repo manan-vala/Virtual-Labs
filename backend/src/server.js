@@ -65,6 +65,15 @@ io.on('connection', (socket) => {
       }
     }
   });
+  // Relay environment changes (Gravity, Time) to everyone in the room
+  socket.on('update-environment', (envData) => {
+    if (socket.roomId && activeRooms[socket.roomId]) {
+      if (activeRooms[socket.roomId].host === socket.id) {
+        // Broadcast the change to everyone in the room
+        socket.to(socket.roomId).emit('environment-updated', envData);
+      }
+    }
+  });
 
   // --- NEW GUEST DRAG MECHANICS ---
   socket.on('guest-grab', (data) => {
