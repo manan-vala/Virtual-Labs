@@ -344,7 +344,6 @@ const PhysicsCanvas = () => {
   return (
     <div className="flex flex-col items-center pt-8 min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-blue-200">
       
-      {/* --- JOIN MODAL (TAILWIND STYLED) --- */}
       {!hasJoined && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm transform transition-all">
@@ -365,11 +364,9 @@ const PhysicsCanvas = () => {
         {hasJoined && <p className="text-blue-600 font-bold mt-2 text-sm tracking-wide uppercase">ROOM: {roomId} &bull; ROLE: {role ? role : 'CONNECTING...'}</p>}
       </div>
 
-      {/* --- CANVAS CONTAINER --- */}
-      <div className="relative w-full max-w-[900px] aspect-[3/2] border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm">
-        
-        {/* Floating Toolbar */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-max">
+      {/* --- THE FIX: TOOLBAR IS NOW SAFELY OUTSIDE THE CANVAS --- */}
+      {hasJoined && (
+        <div className="w-full max-w-[900px] px-4 mb-4 z-20">
           <Toolbar 
             activeTool={activeTool} 
             onSetTool={setActiveTool} 
@@ -380,8 +377,12 @@ const PhysicsCanvas = () => {
             isHost={role === 'host'} 
           />
         </div>
+      )}
 
-        {/* --- THE FIX: MOVED LIVE TELEMETRY HUD TO BOTTOM-LEFT --- */}
+      {/* --- CANVAS CONTAINER --- */}
+      <div className="relative w-full max-w-[900px] aspect-[3/2] border border-slate-200 rounded-3xl overflow-hidden bg-white shadow-sm mb-12">
+        
+        {/* Live Telemetry HUD */}
         {hasJoined && (
           <div className="absolute bottom-4 left-4 z-20 bg-white/85 backdrop-blur-md border border-slate-200/50 rounded-xl px-4 py-3 shadow-lg shadow-slate-200/50 flex flex-col gap-2 min-w-[100px] pointer-events-none">
             <div className="flex justify-between items-center gap-4">
@@ -402,5 +403,4 @@ const PhysicsCanvas = () => {
     </div>
   );
 };
-
 export default PhysicsCanvas;
