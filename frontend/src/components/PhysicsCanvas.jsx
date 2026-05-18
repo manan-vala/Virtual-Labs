@@ -199,7 +199,7 @@ function BodyInspector({ body, onClose }) {
   );
 }
 
-/* ─── Energy Chart (custom SVG) ───────────────────────────────────────────── */
+/* ─── Energy Chart (custom SVG, smooth bezier) ────────────────────────────── */
 function EnergyChart({ data }) {
   if (data.length < 2) return (
     <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -210,11 +210,22 @@ function EnergyChart({ data }) {
   );
   const W = 232, H = 88;
   const max = Math.max(...data, 1);
-  const pts = data.map((v, i) =>
-    `${(i / (data.length - 1)) * W},${H - (v / max) * H * 0.88 - 2}`
-  ).join(' ');
-  const dotX = W;
-  const dotY = H - (data[data.length - 1] / max) * H * 0.88 - 2;
+  const pts = data.map((v, i) => [
+    (i / (data.length - 1)) * W,
+    H - (v / max) * H * 0.88 - 2,
+  ]);
+
+  // Smooth cubic bezier path through midpoints
+  let linePath = `M ${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[i + 1];
+    const cpx = (x0 + x1) / 2;
+    linePath += ` C ${cpx},${y0} ${cpx},${y1} ${x1},${y1}`;
+  }
+  const areaPath = `${linePath} L ${pts[pts.length - 1][0]},${H} L ${pts[0][0]},${H} Z`;
+  const [dotX, dotY] = pts[pts.length - 1];
+
   return (
     <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
       <defs>
@@ -223,8 +234,8 @@ function EnergyChart({ data }) {
           <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#vlcg)" />
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.8"
+      <path d={areaPath} fill="url(#vlcg)" />
+      <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="1.8"
         strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={dotX} cy={dotY} r="3" fill="var(--accent)" />
     </svg>
@@ -453,6 +464,7 @@ const PhysicsCanvas = () => {
   const engineRef    = useRef(null);
   const runnerRef    = useRef(null);
   const mouseConstraintRef = useRef(null);
+  const physicsRef   = useRef(null);
 
   const guestDraggingIdRef = useRef(null);
   const dragOffsetRef      = useRef({ x: 0, y: 0 });
@@ -486,6 +498,7 @@ const PhysicsCanvas = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-scheme', t.scheme);
+    if (physicsRef.current) physicsRef.current.setScheme(t.scheme);
   }, [t.scheme]);
 
   useEffect(() => {
@@ -499,7 +512,9 @@ const PhysicsCanvas = () => {
   useEffect(() => {
     if (!sceneRef.current) return;
     socket.connect();
-    const { engine, runner, mouseConstraint, cleanup } = initPhysics(sceneRef);
+    const physics = initPhysics(sceneRef);
+    physicsRef.current = physics;
+    const { engine, runner, mouseConstraint, cleanup } = physics;
     engineRef.current = engine;
     runnerRef.current = runner;
     mouseConstraintRef.current = mouseConstraint;
@@ -524,7 +539,7 @@ const PhysicsCanvas = () => {
             if (hudConstraintsRef.current) hudConstraintsRef.current.innerText = jc;
           }
 
-          if (now - lastChartUpdateRef.current > 500) {
+          if (now - lastChartUpdateRef.current > 150) {
             let totalKE = 0;
             allBodies.forEach(b => {
               if (!b.isStatic && !b.isGuestDragging) {
@@ -540,7 +555,7 @@ const PhysicsCanvas = () => {
                 time: new Date().toLocaleTimeString([], { hour12: false, second: '2-digit', minute: '2-digit' }),
                 energy: Math.round(totalKE),
               };
-              return [...prev, entry].slice(-20);
+              return [...prev, entry].slice(-40);
             });
             lastChartUpdateRef.current = now;
           }
@@ -863,8 +878,8 @@ const PhysicsCanvas = () => {
             />
           )}
 
-          {/* Physics canvas — always mounted for engine init */}
-          <div ref={sceneRef} style={{ width: '100%', height: '100%' }} />
+          {/* Physics canvas — centered to preserve 3:2 aspect ratio */}
+          <div ref={sceneRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
 
           {/* HUD */}
           {hasJoined && (
@@ -923,6 +938,7 @@ const PhysicsCanvas = () => {
             { label: 'Sci-Dark', value: 'sci-dark' },
             { label: 'Terminal', value: 'terminal' },
             { label: 'Midnight', value: 'midnight' },
+            { label: 'Light',    value: 'light'    },
           ]}
           onChange={v => setTweak('scheme', v)} />
       </TweaksPanel>

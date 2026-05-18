@@ -37,6 +37,16 @@
   --violet: oklch(0.68 0.18 300); --rose: oklch(0.65 0.22 340);
 }
 
+/* ── Light ── */
+[data-scheme="light"] {
+  --bg: #f0f4fa; --surface: #ffffff; --s2: #e8eef8;
+  --b: rgba(0,0,0,0.08); --bh: rgba(0,0,0,0.15);
+  --t: #1a2435; --tm: #4a5d7a; --td: #8a9ab8;
+  --accent: oklch(0.5 0.2 218); --green: oklch(0.48 0.18 155);
+  --amber:  oklch(0.55 0.16 65); --rose: oklch(0.5 0.22 355);
+  --violet: oklch(0.5 0.18 280);
+}
+
 html, body, #root { height: 100%; overflow: hidden; }
 body {
   font-family: 'Space Grotesk', system-ui, sans-serif;
