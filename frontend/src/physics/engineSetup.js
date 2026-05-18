@@ -15,8 +15,8 @@ export const initPhysics = (containerRef) => {
       width: 1200,
       height: 800,
       wireframes: false,
-      background: '#f8fafc',
-      pixelRatio: 1 // FIX: Forces 1:1 mouse tracking mapping
+      background: '#07090e',
+      pixelRatio: 1 // Forces 1:1 mouse tracking mapping
     }
   });
 
@@ -27,7 +27,7 @@ export const initPhysics = (containerRef) => {
   const height = 800;
   const thickness = 1000; 
   
-  const wallConfig = { isStatic: true, render: { fillStyle: '#475569' } };
+  const wallConfig = { isStatic: true, render: { fillStyle: '#07090e' } };
   
   const visibleFloorHeight = 40;
   const ground = Bodies.rectangle(width / 2, height + (thickness / 2) - visibleFloorHeight, width * 3, thickness, wallConfig); 

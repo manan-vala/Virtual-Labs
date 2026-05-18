@@ -1,1 +1,68 @@
 @import "tailwindcss";
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Sci-Dark (default) ── */
+:root {
+  --bg: #07090e;
+  --surface: #0c1424;
+  --s2: #111c30;
+  --b:  rgba(255,255,255,0.06);
+  --bh: rgba(255,255,255,0.11);
+  --t:  #d8e6f4;
+  --tm: #7a94b4;
+  --td: #3d5470;
+  --accent: oklch(0.72 0.2 218);
+  --green:  oklch(0.72 0.18 155);
+  --amber:  oklch(0.78 0.16 65);
+  --rose:   oklch(0.65 0.22 355);
+  --violet: oklch(0.68 0.18 280);
+}
+
+/* ── Terminal ── */
+[data-scheme="terminal"] {
+  --bg: #030d05; --surface: #051409; --s2: #081b0c;
+  --b: rgba(0,255,80,0.07); --bh: rgba(0,255,80,0.14);
+  --t: #b8f0c0; --tm: #4a8858; --td: #2a5234;
+  --accent: oklch(0.74 0.2 145); --green: oklch(0.74 0.2 145);
+  --violet: oklch(0.68 0.18 180); --rose: oklch(0.65 0.22 355);
+}
+
+/* ── Midnight ── */
+[data-scheme="midnight"] {
+  --bg: #08050f; --surface: #100920; --s2: #160c2c;
+  --b: rgba(160,100,255,0.07); --bh: rgba(160,100,255,0.14);
+  --t: #e0d8f6; --tm: #8870b8; --td: #4a3870;
+  --accent: oklch(0.68 0.2 280); --green: oklch(0.72 0.18 155);
+  --violet: oklch(0.68 0.18 300); --rose: oklch(0.65 0.22 340);
+}
+
+html, body, #root { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--t);
+}
+input, button, select { font-family: inherit; }
+button { cursor: pointer; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--bh); border-radius: 4px; }
+
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translateY(0) translateX(0); }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-110px) translateX(var(--dx, 0px)); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes selPulse {
+  0%,100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}

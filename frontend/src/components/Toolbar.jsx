@@ -1,47 +1,126 @@
+import { useState } from 'react';
+
+const TOOL_COLORS = {
+  pointer: 'var(--accent)',
+  joint:   'var(--violet)',
+  spring:  'var(--rose)',
+};
+
+const TLabel = ({ children }) => (
+  <span style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace', color: 'var(--td)',
+    textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 4px' }}>
+    {children}
+  </span>
+);
+
+const TDiv = () => (
+  <div style={{ width: 1, height: 18, background: 'var(--b)', margin: '0 3px' }} />
+);
+
 const Toolbar = ({ activeTool, onSetTool, onAddShape, onClear, onToggleGravity, onOpenLibrary, isZeroG, isHost }) => {
+  const [hov, setHov] = useState(null);
+
+  const MBtn = ({ id, label }) => {
+    const active = activeTool === id;
+    return (
+      <button
+        onClick={() => onSetTool(id)}
+        onMouseEnter={() => setHov(id)}
+        onMouseLeave={() => setHov(null)}
+        style={{
+          padding: '5px 12px', borderRadius: 7, border: 'none',
+          fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em',
+          transition: 'all 0.13s',
+          background: active ? TOOL_COLORS[id] : hov === id ? 'var(--s2)' : 'transparent',
+          color: active ? '#fff' : hov === id ? 'var(--t)' : 'var(--tm)',
+          boxShadow: active ? `0 2px 10px color-mix(in srgb, ${TOOL_COLORS[id]} 40%, transparent)` : 'none',
+        }}>
+        {label}
+      </button>
+    );
+  };
+
+  const SBtn = ({ id, label }) => (
+    <button
+      onClick={() => onAddShape(id)}
+      onMouseEnter={() => setHov('s' + id)}
+      onMouseLeave={() => setHov(null)}
+      style={{
+        padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+        cursor: 'pointer', border: '1px solid var(--b)', transition: 'all 0.13s',
+        background: hov === 's' + id ? 'var(--s2)' : 'transparent',
+        color: hov === 's' + id ? 'var(--t)' : 'var(--tm)',
+      }}>
+      {label}
+    </button>
+  );
+
   return (
-    <div className="w-full flex justify-center">
-      <div className="flex flex-wrap justify-center items-center gap-y-3 gap-x-4 px-6 py-3 bg-white/90 backdrop-blur-xl border border-slate-200/50 shadow-sm rounded-2xl w-full max-w-fit">
-        
-        {/* --- MODES --- */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Mode</span>
-          <button onClick={() => onSetTool('pointer')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'pointer' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>👆 Drag</button>
-          <button onClick={() => onSetTool('joint')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'joint' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>🔗 Joint</button>
-          <button onClick={() => onSetTool('spring')} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${activeTool === 'spring' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'text-slate-600 hover:bg-slate-100'}`}>〰️ Spring</button>
-        </div>
+    <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+      display: 'flex', alignItems: 'center', gap: 3,
+      background: 'rgba(11,18,32,0.93)', border: '1px solid var(--bh)',
+      borderRadius: 12, padding: '5px 8px',
+      backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.55)', whiteSpace: 'nowrap' }}>
 
-        {/* --- SPAWN --- */}
-        <div className="hidden md:block w-px h-6 bg-slate-200 mx-1"></div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Spawn</span>
-          <button onClick={() => onAddShape('box')} className="px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-800 rounded-xl hover:bg-slate-200 transition-colors">Box</button>
-          <button onClick={() => onAddShape('circle')} className="px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-800 rounded-xl hover:bg-slate-200 transition-colors">Circle</button>
-          <button onClick={() => onAddShape('heavyBox')} className="px-4 py-2 text-sm font-semibold bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-colors shadow-md shadow-slate-700/20">Anvil</button>
-        </div>
+      <TLabel>MODE</TLabel>
+      <MBtn id="pointer" label="Drag" />
+      <MBtn id="joint"   label="Joint" />
+      <MBtn id="spring"  label="Spring" />
 
-        {/* --- HOST CONTROLS --- */}
-        {isHost && (
-          <>
-            <div className="hidden md:block w-px h-6 bg-slate-200 mx-1"></div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Lab</span>
-              
-              {/* THE MISSING LIBRARY BUTTON */}
-              <button onClick={onOpenLibrary} className="px-4 py-2 text-sm font-semibold bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100">
-                📚 Library
-              </button>
-              
-              <button onClick={onToggleGravity} className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${isZeroG ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                {isZeroG ? '🌌 Zero-G' : '🌍 Earth Gravity'}
-              </button>
-              <button onClick={onClear} className="px-4 py-2 text-sm font-semibold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
-                🗑️ Clear
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <TDiv />
+      <TLabel>SPAWN</TLabel>
+      <SBtn id="box"      label="Box" />
+      <SBtn id="circle"   label="Circle" />
+      <SBtn id="heavyBox" label="Anvil" />
+
+      {isHost && (
+        <>
+          <TDiv />
+
+          <button
+            onClick={onToggleGravity}
+            onMouseEnter={() => setHov('g')}
+            onMouseLeave={() => setHov(null)}
+            style={{
+              padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', transition: 'all 0.13s',
+              border: isZeroG ? '1px solid oklch(0.68 0.18 280 / 0.45)' : '1px solid var(--b)',
+              background: isZeroG ? 'oklch(0.68 0.18 280 / 0.13)' : hov === 'g' ? 'var(--s2)' : 'transparent',
+              color: isZeroG ? 'var(--violet)' : 'var(--tm)',
+            }}>
+            {isZeroG ? 'Zero-G' : 'Earth G'}
+          </button>
+
+          <button
+            onClick={onOpenLibrary}
+            onMouseEnter={() => setHov('lib')}
+            onMouseLeave={() => setHov(null)}
+            style={{
+              padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', transition: 'all 0.13s',
+              border: '1px solid oklch(0.72 0.18 155 / 0.32)',
+              background: hov === 'lib' ? 'oklch(0.72 0.18 155 / 0.16)' : 'oklch(0.72 0.18 155 / 0.07)',
+              color: 'var(--green)',
+            }}>
+            Library
+          </button>
+
+          <button
+            onClick={onClear}
+            onMouseEnter={() => setHov('clr')}
+            onMouseLeave={() => setHov(null)}
+            style={{
+              padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', transition: 'all 0.13s',
+              border: '1px solid oklch(0.65 0.22 355 / 0.28)',
+              background: hov === 'clr' ? 'oklch(0.65 0.22 355 / 0.12)' : 'transparent',
+              color: hov === 'clr' ? 'var(--rose)' : 'var(--td)',
+            }}>
+            Clear
+          </button>
+        </>
+      )}
     </div>
   );
 };
