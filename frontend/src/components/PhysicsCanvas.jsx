@@ -465,6 +465,7 @@ const PhysicsCanvas = () => {
   const runnerRef    = useRef(null);
   const mouseConstraintRef = useRef(null);
   const physicsRef   = useRef(null);
+  const runnerStartedRef = useRef(false);
 
   const guestDraggingIdRef = useRef(null);
   const dragOffsetRef      = useRef({ x: 0, y: 0 });
@@ -526,7 +527,11 @@ const PhysicsCanvas = () => {
       setRole(data.role);
 
       if (data.role === 'host') {
-        Matter.Runner.run(runnerRef.current, engineRef.current);
+        // Runner may already be running (started optimistically on join); ensure it's running
+        if (!runnerStartedRef.current) {
+          Matter.Runner.run(runnerRef.current, engineRef.current);
+          runnerStartedRef.current = true;
+        }
         Matter.Events.on(engineRef.current, 'afterUpdate', () => {
           const allBodies      = Matter.Composite.allBodies(engineRef.current.world);
           const allConstraints = Matter.Composite.allConstraints(engineRef.current.world);
@@ -585,7 +590,9 @@ const PhysicsCanvas = () => {
           if (body) { body.isGuestDragging = false; Matter.Body.set(body, 'isSleeping', false); }
         });
       } else {
+        // Guest: stop local runner, rely on physics-sync from host
         Matter.Runner.stop(runnerRef.current);
+        runnerStartedRef.current = false;
         socket.emit('request-initial-state');
       }
 
@@ -733,6 +740,8 @@ const PhysicsCanvas = () => {
 
     socket.on('shape-spawned', (shapeData) => {
       if (!engineRef.current) return;
+      // Skip if already added locally (spawner's own echo from server)
+      if (Matter.Composite.allBodies(engineRef.current.world).some(b => b.id === shapeData.id)) return;
       let newBody;
       if (shapeData.type === 'box')      newBody = Matter.Bodies.rectangle(shapeData.startX, shapeData.startY, 60, 60, { restitution: 0.6, render: { fillStyle: '#1b4f9e' } });
       else if (shapeData.type === 'circle')   newBody = Matter.Bodies.circle(shapeData.startX, shapeData.startY, 30, { restitution: 0.9, render: { fillStyle: '#0c6e49' } });
@@ -794,19 +803,43 @@ const PhysicsCanvas = () => {
   /* ── Handlers ─────────────────────────────────────────────────────────── */
   const handleJoinRoom = (id) => {
     if (!id?.trim()) return;
-    setRoomId(id.trim());
-    socket.emit('join-room', id.trim());
+    const trimmed = id.trim();
+    setRoomId(trimmed);
+    socket.emit('join-room', trimmed);
     setHasJoined(true);
+    // Start runner immediately so physics works even without backend
+    if (runnerRef.current && engineRef.current && !runnerStartedRef.current) {
+      Matter.Runner.run(runnerRef.current, engineRef.current);
+      runnerStartedRef.current = true;
+    }
+  };
+
+  const spawnBodyLocal = (shapeData) => {
+    if (!engineRef.current) return;
+    let newBody;
+    if (shapeData.type === 'box')
+      newBody = Matter.Bodies.rectangle(shapeData.startX, shapeData.startY, 60, 60, { restitution: 0.6, render: { fillStyle: '#1b4f9e' } });
+    else if (shapeData.type === 'circle')
+      newBody = Matter.Bodies.circle(shapeData.startX, shapeData.startY, 30, { restitution: 0.9, render: { fillStyle: '#0c6e49' } });
+    else if (shapeData.type === 'heavyBox')
+      newBody = Matter.Bodies.rectangle(shapeData.startX, shapeData.startY, 80, 80, { density: 0.1, restitution: 0.1, render: { fillStyle: '#0d1e34' } });
+    if (newBody) {
+      newBody.id = shapeData.id;
+      newBody.plugin = { customType: shapeData.type };
+      Matter.World.add(engineRef.current.world, newBody);
+    }
   };
 
   const handleAddShape = (type) => {
-    if (!sceneRef.current) return;
-    socket.emit('spawn-shape', {
+    if (!engineRef.current) return;
+    const shapeData = {
       type,
       startX: 1200 / 2 + (Math.random() * 40 - 20),
       startY: 100,
       id: Math.floor(Math.random() * 10000000),
-    });
+    };
+    spawnBodyLocal(shapeData);            // add to world immediately
+    socket.emit('spawn-shape', shapeData); // broadcast to other clients
   };
 
   const handleClearCanvas = () => { if (role === 'host') socket.emit('clear-canvas'); };
