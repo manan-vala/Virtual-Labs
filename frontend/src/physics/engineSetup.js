@@ -26,12 +26,25 @@ export const initPhysics = (containerRef) => {
     }
   });
 
-  // Maintain 3:2 aspect ratio — never stretch/squish shapes
-  render.canvas.style.maxWidth  = '100%';
-  render.canvas.style.maxHeight = '100%';
-  render.canvas.style.width     = 'auto';
-  render.canvas.style.height    = 'auto';
-  render.canvas.style.display   = 'block';
+  // Size canvas to fit the container while preserving 3:2 aspect ratio.
+  // Explicit pixel dimensions are reliable across browsers and flex layouts.
+  render.canvas.style.display = 'block';
+  const fitCanvas = () => {
+    const c = containerRef.current;
+    if (!c) return;
+    const cw = c.clientWidth, ch = c.clientHeight;
+    if (cw <= 0 || ch <= 0) return;
+    const aspect = 1200 / 800;
+    let w, h;
+    if (cw / ch > aspect) { h = ch; w = h * aspect; }
+    else                  { w = cw; h = w / aspect; }
+    render.canvas.style.width  = w + 'px';
+    render.canvas.style.height = h + 'px';
+  };
+  fitCanvas();
+  const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fitCanvas) : null;
+  if (ro) ro.observe(containerRef.current);
+  window.addEventListener('resize', fitCanvas);
 
   const width = 1200;
   const height = 800;
@@ -131,6 +144,8 @@ export const initPhysics = (containerRef) => {
       walls.forEach(w => { w.render.fillStyle = bg; });
     },
     cleanup: () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', fitCanvas);
       Matter.Events.off(render, 'afterRender');
       Matter.Render.stop(render);
       Matter.Runner.stop(runner);
